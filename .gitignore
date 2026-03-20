@@ -13,3 +13,10 @@ rp_java_nexo/
 config.json
 default_assets.zip
 __pycache__/
+vanilla_cache/
+*.zip
+*.mcpack
+ConvertRP/target/
+ConvertRP/pack/
+ConvertRP/scratch_files/
+.python_parity/

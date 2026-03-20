@@ -277,20 +277,20 @@ async function runConversion(modelsToConvert) {
             
             // Render and Snap
             await new Promise(r => requestAnimationFrame(r)); // Wait for render
-            const canvas = viewer.renderer.domElement;
-            const dataUrl = canvas.toDataURL('image/png');
-            iconBase.file(modelName + '.png', dataUrl.split(',')[1], { base64: true });
-            
-            log(`✓ ${modelName}`);
+            viewer.removeAll();
+            await viewer.load(content, resolvedTextures);
+            const iconData = await viewer.screenshot();
+            iconBase.file(modelName + '.png', iconData.split(',')[1], {base64: true});
             successCount++;
         } catch (err) {
             log(`✗ ${modelName}: ${err.message}`);
         }
     }
 
-    // Write selected items list for Python filtering
-    const selectedList = modelsToConvert.map(m => m.path.split('/').pop().replace(/\.json$/i, ''));
-    fs.writeFileSync(path.join(convertRPDir, 'selected_items.json'), JSON.stringify(selectedList));
+    selectionModal.classList.remove('active');
+    
+    const filterData = modelsToConvert.map(m => m.path.split('/').pop().replace('.json', ''));
+    fs.writeFileSync(path.join(workingDir, 'ConvertRP', 'selected_items.json'), JSON.stringify(filterData));
 
     log(`\nRendering complete. Pushing to Python converter...`);
     await callPythonConverter(currentZipFile.path || currentZipFile.name, convertRPDir);

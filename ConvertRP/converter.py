@@ -196,6 +196,7 @@ def find_asset(rel_path):
     if os.path.exists(p1): return p1
     p2 = os.path.join("vanilla_cache", rel_path)
     if os.path.exists(p2): return p2
+    # status_message("error", f"Asset not found: {rel_path}")
     return p1
 
 def filter_unwanted_folders():
@@ -393,8 +394,11 @@ def resolve_parental(config):
     # Filter non-existent files
     valid_config = {}
     for gid, entry in config.items():
+        # status_message("info", f"DEBUG: Checking path {entry['path']}")
         if os.path.exists(entry["path"]):
             valid_config[gid] = entry
+        else:
+            status_message("error", f"Model file missing: {entry['path']}")
             
     # Add hashes
     for gid, entry in valid_config.items():
@@ -1191,6 +1195,17 @@ def finalize_pack(config, args):
     status_message("completion", "Conversion Process Complete. Output available in target/packaged")
 
 def main():
+    import sys
+    import io
+    # Ensure stdout/stderr handle UTF-8 even on Windows
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+            sys.stderr.reconfigure(encoding='utf-8')
+        except:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
     parser = argparse.ArgumentParser(description="Convert Java resource pack to Bedrock.")
     parser.add_argument("input_pack", help="Input resource pack zip file")
 
