@@ -23,6 +23,8 @@ const itemSearch = document.getElementById('itemSearch');
 const selectAllBtn = document.getElementById('selectAllItems');
 const deselectAllBtn = document.getElementById('deselectAllItems');
 const startSelectionBtn = document.getElementById('startSelectionBtn');
+const openSelectionBtn = document.getElementById('openSelectionBtn');
+const selectionModal = document.getElementById('selectionModal');
 
 let isProcessing = false;
 let indexedTextures = {}; // Maps name/path to JSZip Entry
@@ -95,6 +97,7 @@ async function indexZipFile(file) {
         console.log("Discovered models:", allDiscoveredModels);
         
         if (allDiscoveredModels.length > 0) {
+            itemSelectionContainer.style.display = 'block';
             showItemSelection();
         } else {
             batchStatus.textContent = '❌ No valid models found in ZIP.';
@@ -107,10 +110,14 @@ async function indexZipFile(file) {
 }
 
 function showItemSelection() {
-    itemSelectionContainer.style.display = 'block';
+    selectionModal.classList.add('active');
     populateItemList(allDiscoveredModels);
-    batchStatus.textContent = '🔍 Select items below to convert.';
+    batchStatus.textContent = '🔍 Select items in the popup.';
 }
+
+openSelectionBtn.addEventListener('click', () => {
+    selectionModal.classList.add('active');
+});
 
 function populateItemList(models) {
     itemListDiv.innerHTML = '';
@@ -157,15 +164,27 @@ function renderTree(node, container, level = 0) {
 
     // Render files
     if (node._files) {
+        const fileGrid = document.createElement('div');
+        fileGrid.style.display = 'grid';
+        fileGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(180px, 1fr))';
+        fileGrid.style.gap = '10px';
+        fileGrid.style.padding = '10px 0';
+        container.appendChild(fileGrid);
+
         node._files.forEach(file => {
             const row = document.createElement('div');
             row.className = 'item-row';
-            row.style.marginLeft = `${level * 12}px`;
+            row.style.background = 'rgba(255,255,255,0.03)';
+            row.style.padding = '10px';
+            row.style.borderRadius = '8px';
+            row.style.border = '1px solid rgba(255,255,255,0.05)';
             row.innerHTML = `
                 <input type="checkbox" id="item_${file.index}" value="${file.index}" checked>
-                <label for="item_${file.index}">${file.name}</label>
+                <label for="item_${file.index}" style="cursor:pointer; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  📦 ${file.name}
+                </label>
             `;
-            container.appendChild(row);
+            fileGrid.appendChild(row);
         });
     }
 }
@@ -198,7 +217,7 @@ startSelectionBtn.addEventListener('click', async () => {
     }
     
     const selectedModels = selectedIndices.map(idx => allDiscoveredModels[idx]);
-    itemSelectionContainer.style.display = 'none';
+    selectionModal.classList.remove('active');
     await runConversion(selectedModels);
 });
 
