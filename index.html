@@ -667,6 +667,38 @@
       background: rgba(56, 189, 248, 0.1);
       color: #38bdf8;
     }
+
+    .folder-row {
+      margin: 4px 0;
+    }
+
+    .folder-row summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: #f8fafc;
+      padding: 4px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .folder-row summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .folder-row summary:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .folder-content {
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      margin-left: 8px;
+      padding-left: 4px;
+    }
   </style>
 
   <title>Batch Zicon Generator v2</title>

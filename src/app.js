@@ -114,16 +114,60 @@ function showItemSelection() {
 
 function populateItemList(models) {
     itemListDiv.innerHTML = '';
+    
+    // Build tree
+    const tree = {};
     models.forEach((model, index) => {
-        const name = model.path.split('/').pop().replace(/\.json$/i, '');
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.innerHTML = `
-            <input type="checkbox" id="item_${index}" value="${index}" checked>
-            <label for="item_${index}" title="${model.path}">${name}</label>
-        `;
-        itemListDiv.appendChild(row);
+        const parts = model.path.split('/');
+        // Remove 'assets' and 'models' for cleaner tree
+        const cleanParts = parts.filter(p => p !== 'assets' && p !== 'models');
+        
+        let current = tree;
+        cleanParts.forEach((part, i) => {
+            if (i === cleanParts.length - 1) {
+                // File
+                if (!current._files) current._files = [];
+                current._files.push({ name: part.replace('.json', ''), index: index });
+            } else {
+                // Directory
+                if (!current[part]) current[part] = {};
+                current = current[part];
+            }
+        });
     });
+
+    renderTree(tree, itemListDiv);
+}
+
+function renderTree(node, container, level = 0) {
+    // Render subfolders
+    Object.keys(node).forEach(key => {
+        if (key === '_files') return;
+        
+        const details = document.createElement('details');
+        details.className = 'folder-row';
+        details.style.marginLeft = `${level * 12}px`;
+        details.innerHTML = `
+            <summary>📂 ${key}</summary>
+            <div class="folder-content"></div>
+        `;
+        container.appendChild(details);
+        renderTree(node[key], details.querySelector('.folder-content'), level + 1);
+    });
+
+    // Render files
+    if (node._files) {
+        node._files.forEach(file => {
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.style.marginLeft = `${level * 12}px`;
+            row.innerHTML = `
+                <input type="checkbox" id="item_${file.index}" value="${file.index}" checked>
+                <label for="item_${file.index}">${file.name}</label>
+            `;
+            container.appendChild(row);
+        });
+    }
 }
 
 // Selection Controls
@@ -137,9 +181,12 @@ deselectAllBtn.addEventListener('click', () => {
 
 itemSearch.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
-    itemListDiv.querySelectorAll('.item-row').forEach(row => {
-        const name = row.querySelector('label').textContent.toLowerCase();
-        row.style.display = name.includes(term) ? 'flex' : 'none';
+    itemListDiv.querySelectorAll('.item-row, .folder-row').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = (text.includes(term) || term === '') ? 'block' : 'none';
+        if (row.classList.contains('folder-row') && term.length > 0 && text.includes(term)) {
+            row.open = true;
+        }
     });
 });
 
