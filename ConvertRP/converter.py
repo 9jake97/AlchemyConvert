@@ -58,54 +58,57 @@ def setup_phase(args):
     status_message("plain", f"{Colors.GRAY}Block material: {Colors.BLUE}{block_material}")
     status_message("plain", f"{Colors.GRAY}Fallback pack URL: {Colors.BLUE}{fallback_pack}\n")
 
+    # Persistent Vanilla Cache path
+    vanilla_cache_dir = "vanilla_cache"
+    os.makedirs(vanilla_cache_dir, exist_ok=True)
+
     status_message("process", f"Setting up conversion environment for (Python Parity Version)")
     
     for f in ["config.json", "pack.mcmeta", "pack.png"]:
         if os.path.exists(f): os.remove(f)
     for d in ["pack", "scratch_files", "target"]:
-        if os.path.exists(d): shutil.rmtree(d)
+        if os.path.exists(d): shutil.rmtree(d, ignore_errors=True)
         
     os.makedirs("target/rp", exist_ok=True)
     os.makedirs("scratch_files", exist_ok=True)
     
-    # 4. Decompress input pack
-    status_message("process", "Decompressing packs...")
-    
-    # Create an isolated folder for unpacked files to keep the root directory clean
-    extract_dir = "pack"
-    os.makedirs(extract_dir, exist_ok=True)
-    
-    # Extract default vanilla assets FIRST if present (so custom pack overwrites them)
+    # 4. Handle default assets (Vanilla Cache)
     default_assets_zip = args.default_assets if args.default_assets else "default_assets.zip"
     if os.path.exists(default_assets_zip):
-        status_message("process", f"Extracting {default_assets_zip}...")
-        with zipfile.ZipFile(default_assets_zip, 'r') as zip_ref:
-            # Look for the top-level directory (e.g. minecraft-assets-1.21.1)
-            top_level = None
-            for name in zip_ref.namelist():
-                if name.endswith("/assets/"):
-                    top_level = name[:-7]
-                    break
-            
-            if top_level:
-                for item in zip_ref.namelist():
-                    if item.startswith(top_level):
-                        relative_path = item[len(top_level):]
-                        if relative_path.startswith('/'): relative_path = relative_path[1:]
-                        if not relative_path: continue
-                        
-                        target_path = os.path.join(extract_dir, relative_path)
-                        if item.endswith('/'):
-                            os.makedirs(target_path, exist_ok=True)
-                        else:
-                            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                            with zip_ref.open(item) as source, open(target_path, "wb") as target:
-                                shutil.copyfileobj(source, target)
-            else:
-                zip_ref.extractall(extract_dir)
+        # Only extract if vanilla_cache/assets does not exist
+        if not os.path.exists(os.path.join(vanilla_cache_dir, "assets")):
+            status_message("process", f"Extracting {default_assets_zip} into persistent cache...")
+            with zipfile.ZipFile(default_assets_zip, 'r') as zip_ref:
+                # Find top-level assets folder
+                top_level = None
+                for name in zip_ref.namelist():
+                    if "/assets/" in name or name.startswith("assets/"):
+                        if "/assets/" in name:
+                             top_level = name.split("/assets/")[0] + "/"
+                        break
                 
-    # Extract input pack SECOND (overwrites vanilla files with custom ones)
-    status_message("process", f"Extracting...")
+                if top_level:
+                    for item in zip_ref.namelist():
+                        if item.startswith(top_level):
+                            relative_path = item[len(top_level):]
+                            if not relative_path: continue
+                            target_path = os.path.join(vanilla_cache_dir, relative_path)
+                            if item.endswith('/'):
+                                os.makedirs(target_path, exist_ok=True)
+                            else:
+                                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                                with zip_ref.open(item) as source, open(target_path, "wb") as target:
+                                    shutil.copyfileobj(source, target)
+                else:
+                    zip_ref.extractall(vanilla_cache_dir)
+            status_message("completion", "Vanilla assets cached.")
+        else:
+            status_message("info", "Using existing vanilla assets from cache.")
+
+    # 5. Decompress input pack into fresh 'pack' folder
+    status_message("process", "Decompressing input pack...")
+    extract_dir = "pack"
+    os.makedirs(extract_dir, exist_ok=True)
     with zipfile.ZipFile(input_pack, 'r') as zip_ref:
         zip_ref.extractall(extract_dir)
             
@@ -184,6 +187,17 @@ def download_scratch_files():
         status_message("error", f"Failed to download mapping files: {e}")
         sys.exit(1)
 
+def find_asset(rel_path):
+    """Helper to find asset in custom pack or vanilla cache."""
+    if rel_path.startswith("./"): rel_path = rel_path[2:]
+    if rel_path.startswith("pack/"): rel_path = rel_path[5:]
+    
+    p1 = os.path.join("pack", rel_path)
+    if os.path.exists(p1): return p1
+    p2 = os.path.join("vanilla_cache", rel_path)
+    if os.path.exists(p2): return p2
+    return p1
+
 def filter_unwanted_folders():
     status_message("process", "Filtering out unwanted asset folders...")
     unwanted = ["./pack/assets/betterhud", "./pack/assets/nameplates", "./pack/assets/modelengine"]
@@ -255,7 +269,8 @@ def parse_old_format(mappings, texture_maps, filter_items=None):
             else:
                 ns, mdl = "minecraft", model_ref
                 
-            model_path_full = f"./pack/assets/{ns}/models/{mdl}.json"
+            model_path_rel = f"assets/{ns}/models/{mdl}.json"
+            model_path_full = find_asset(model_path_rel)
             model_name = mdl.split("/")[-1]
             model_path_dir = "/".join(mdl.split("/")[:-1])
             
@@ -346,7 +361,8 @@ def parse_new_format(geyser_id_counter, filter_items=None):
                     else:
                         ns, mdl = "minecraft", m_ref
                         
-                    model_path_full = f"./pack/assets/{ns}/models/{mdl}.json"
+                    model_path_rel = f"assets/{ns}/models/{mdl}.json"
+                    model_path_full = find_asset(model_path_rel)
                     model_name = mdl.split("/")[-1]
                     model_path_dir = "/".join(mdl.split("/")[:-1])
                     
@@ -433,7 +449,7 @@ def resolve_parental(config):
                     p_ns, p_mdl = parent_ref.split(":")
                 else:
                     p_ns, p_mdl = "minecraft", parent_ref
-                current_path = f"./pack/assets/{p_ns}/models/{p_mdl}.json"
+                current_path = find_asset(f"assets/{p_ns}/models/{p_mdl}.json")
             else:
                 current_path = None
                 
@@ -522,14 +538,16 @@ def build_atlases(config):
     status_message("process", "Generating texture list for atlas...")
     os.makedirs("scratch_files/spritesheet", exist_ok=True)
     
-    # Step 1: Collect ALL existing textures from the resource pack
+    # Step 1: Collect ALL existing textures from custom pack AND vanilla cache
     all_pack_textures = set()
-    for root, dirs, files in os.walk("./pack/assets"):
-        for fname in files:
-            if fname.endswith('.png'):
-                full = os.path.join(root, fname).replace("\\", "/")
-                if '/textures/' in full:
-                    all_pack_textures.add(full)
+    for base_dir in ["pack", "vanilla_cache"]:
+        if not os.path.exists(base_dir): continue
+        for root, dirs, files in os.walk(os.path.join(base_dir, "assets")):
+            for fname in files:
+                if fname.endswith('.png'):
+                    full = os.path.join(root, fname).replace("\\", "/")
+                    if '/textures/' in full:
+                        all_pack_textures.add(full)
     
     # Step 2: Extract texture sets from ALL models (including generated)
     # This matches the shell script: jq -s '[.[] | (.textures // {}) | [.[]?] | unique]'
@@ -545,7 +563,7 @@ def build_atlases(config):
                 ns, tid = v.split(":")
             else:
                 ns, tid = "minecraft", v
-            t_path = f"./pack/assets/{ns}/textures/{tid.replace('#', '')}.png"
+            t_path = find_asset(f"assets/{ns}/textures/{tid.replace('#', '')}.png")
             model_textures.append(t_path)
         
         if model_textures:
@@ -553,7 +571,7 @@ def build_atlases(config):
     
     # Step 3: mapatlas union-merge algorithm (matches shell's jq mapatlas function)
     # Start with a seed atlas containing just the fallback texture
-    unique_texture_sets = [["./pack/assets/minecraft/textures/0.png"]]
+    unique_texture_sets = [[find_asset("assets/minecraft/textures/0.png")]]
     
     for tex_set in per_model_textures:
         unique_set = list(set(tex_set))
@@ -596,13 +614,13 @@ def build_atlases(config):
         
         # If any texture in atlas is missing, add fallback 0.png
         if len(existing) < len(u_set):
-            fallback = "./pack/assets/minecraft/textures/0.png"
+            fallback = find_asset("assets/minecraft/textures/0.png")
             if fallback not in existing and os.path.exists(fallback):
                 existing.append(fallback)
         
         if not existing:
             # Create a placeholder if completely empty
-            fallback = "./pack/assets/minecraft/textures/0.png"
+            fallback = find_asset("assets/minecraft/textures/0.png")
             if os.path.exists(fallback):
                 existing = [fallback]
         
@@ -621,7 +639,7 @@ def build_atlases(config):
                 ns, tid = v.split(":")
             else:
                 ns, tid = "minecraft", v
-            t_path = f"./pack/assets/{ns}/textures/{tid.replace('#', '')}.png"
+            t_path = find_asset(f"assets/{ns}/textures/{tid.replace('#', '')}.png")
             model_textures.add(t_path)
         
         # Find which atlas this model belongs to
@@ -650,7 +668,7 @@ def geom_element_array(elements, textures, atlas_meta, atlas_frames):
             ns, tid = tex_ref.split(":")
         else:
             ns, tid = "minecraft", tex_ref
-        return f"./pack/assets/{ns}/textures/{tid}.png"
+        return find_asset(f"assets/{ns}/textures/{tid}.png")
         
     def get_frame(tex_path):
         t_frame = atlas_frames.get(tex_path, {}).get("frame", {"x": 0, "y": 0, "w": 16, "h": 16})
@@ -1246,6 +1264,7 @@ def perform_cleanup():
         "target/unpackaged",
         "rp_current_nexo",
         "rp_java_nexo"
+        # "vanilla_cache" -> We KEEP this now!
     ]
     for path in temp_paths:
         if os.path.exists(path):
