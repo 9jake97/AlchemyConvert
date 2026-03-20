@@ -258,8 +258,9 @@ def parse_old_format(mappings, texture_maps, filter_items=None):
             continue
             
         overrides = data.get("overrides", [])
+        # If no overrides, we still process it as a static model
         if not overrides:
-            continue
+            overrides = [{"predicate": {}, "model": item_name}]
             
         # Get Max Damage
         max_damage = 1
