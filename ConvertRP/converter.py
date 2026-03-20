@@ -221,12 +221,16 @@ def parse_old_format(mappings, texture_maps, filter_items=None):
             ns_item = f_parts[assets_idx + 1]
         except:
             continue
-        item_base = os.path.basename(filepath).replace(".json", "")
+        
+        item_base = os.path.basename(filepath)
+        if item_base.lower().endswith(".json"):
+            item_base = item_base[:-5]
         item_name = f"{ns_item}:{item_base}"
 
         # Filter check
         if filter_items is not None:
-            if item_base not in filter_items and item_name not in filter_items:
+            filter_lower = [f.lower() for f in filter_items]
+            if item_base.lower() not in filter_lower and item_name.lower() not in filter_lower:
                 continue
 
 
@@ -1165,17 +1169,27 @@ def finalize_pack(config, args):
         
     # Pack output
     status_message("process", "Integrating Armor and Font data via Python scripts...")
-    try:
-        status_message("process", "Running Armor integration...")
-        import armor
-    except Exception as e:
-        status_message("error", f"Armor integration failed: {e}")
+    # Retrieve filter_items from earlier or file
+    filter_items = None
+    if os.path.exists("selected_items.json"):
+        with open("selected_items.json", "r") as f:
+            filter_items = json.load(f)
 
-    try:
-        status_message("process", "Running Font integration...")
-        import font
-    except Exception as e:
-        status_message("error", f"Font integration failed: {e}")
+    # Selective Mode: Skip Fonts and Armor to save time
+    if filter_items is not None:
+        status_message("info", "Selective mode: Skipping Armor and Font integration.")
+    else:
+        try:
+            status_message("process", "Running Armor integration...")
+            import armor
+        except Exception as e:
+            status_message("error", f"Armor integration failed: {e}")
+
+        try:
+            status_message("process", "Running Font integration...")
+            import font
+        except Exception as e:
+            status_message("error", f"Font integration failed: {e}")
 
     status_message("process", "Compressing output packs")
     os.makedirs("./target/packaged", exist_ok=True)

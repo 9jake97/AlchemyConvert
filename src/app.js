@@ -271,12 +271,6 @@ async function runConversion(modelsToConvert) {
 
             // Create Icon via ModelViewer
             // Note: We use the existing ModelViewer instance from the page
-            viewer.clear();
-            const model = new JsonModel(modelName, data, resolvedTextures, false);
-            viewer.add(model);
-            
-            // Render and Snap
-            await new Promise(r => requestAnimationFrame(r)); // Wait for render
             viewer.removeAll();
             await viewer.load(content, resolvedTextures);
             const iconData = await viewer.screenshot();
