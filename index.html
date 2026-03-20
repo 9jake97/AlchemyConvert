@@ -595,6 +595,78 @@
     .toggle-switch input:checked+.toggle-slider::before {
       transform: translateX(18px);
     }
+
+    /* Item Selection Styles */
+    #itemSelectionContainer {
+      margin-top: 24px;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      display: none;
+    }
+
+    #itemSearch {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    #itemSearch:focus {
+      border-color: #38bdf8;
+    }
+
+    #itemList {
+      max-height: 250px;
+      overflow-y: auto;
+      margin: 0;
+      padding: 0;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      font-size: 12px;
+      color: #cbd5e1;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
+    .item-row input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    .selection-controls {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .small-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .small-btn:hover {
+      background: rgba(56, 189, 248, 0.1);
+      color: #38bdf8;
+    }
   </style>
 
   <title>Batch Zicon Generator v2</title>
@@ -659,6 +731,19 @@
               ⚙️ Settings
             </button>
           </li>
+          <div id="itemSelectionContainer">
+            <label>Select Items to Convert</label>
+            <div class="selection-controls">
+              <button class="small-btn" id="selectAllItems">Select All</button>
+              <button class="small-btn" id="deselectAllItems">Deselect All</button>
+            </div>
+            <input type="text" id="itemSearch" placeholder="Search items...">
+            <div id="itemList"></div>
+            <button class="start-btn" id="startSelectionBtn" style="margin-top: 16px; padding: 10px 0; font-size: 13px;">
+              ⚡ Convert Selected
+            </button>
+          </div>
+
           <li>
             <p id="batchStatus" style="font-size:0.85em;color:#999;"></p>
           </li>

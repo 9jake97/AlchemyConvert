@@ -193,7 +193,7 @@ def filter_unwanted_folders():
             status_message("info", f"Matched directory (not deleted): {uw}")
 
 
-def parse_old_format(mappings, texture_maps):
+def parse_old_format(mappings, texture_maps, filter_items=None):
     status_message("process", "Processing OLD format (models/item)...")
     config_entries = {}
     geyser_id_counter = 1
@@ -208,6 +208,11 @@ def parse_old_format(mappings, texture_maps):
             continue
         item_base = os.path.basename(filepath).replace(".json", "")
         item_name = f"{ns_item}:{item_base}"
+
+        # Filter check
+        if filter_items is not None:
+            if item_base not in filter_items and item_name not in filter_items:
+                continue
 
 
         try:
@@ -298,7 +303,7 @@ def extract_model_from_new_format(node):
             if models: return extract_model_from_new_format(models[0])
     return None
 
-def parse_new_format(geyser_id_counter):
+def parse_new_format(geyser_id_counter, filter_items=None):
     status_message("process", "Processing NEW format (items/)...")
     config_entries = {}
     
@@ -310,7 +315,13 @@ def parse_new_format(geyser_id_counter):
             ns_item = f_parts[assets_idx + 1]
         except:
             continue
-        item_name = f"{ns_item}:" + os.path.basename(filepath).replace(".json", "")
+        item_base = os.path.basename(filepath).replace(".json", "")
+        item_name = f"{ns_item}:{item_base}"
+
+        # Filter check
+        if filter_items is not None:
+            if item_base not in filter_items and item_name not in filter_items:
+                continue
 
 
         try:
@@ -1171,6 +1182,7 @@ def main():
     parser.add_argument("-f", "--fallback_pack", default="null", help="Fallback pack URL")
     parser.add_argument("-da", "--default_assets", default=None, help="Path to default_assets.zip")
     parser.add_argument("--mapping_version", default="v1", choices=["v1", "v2"], help="Geyser mapping output format (v1 or v2)")
+    parser.add_argument("--filter", default=None, help="Path to JSON file with list of items to convert")
     
     args = parser.parse_args()
     
@@ -1181,6 +1193,16 @@ def main():
     
     download_scratch_files()
     filter_unwanted_folders()
+    
+    # Load filter if provided
+    filter_items = None
+    if args.filter and os.path.exists(args.filter):
+        try:
+            with open(args.filter, "r", encoding="utf-8") as f:
+                filter_items = json.load(f)
+            status_message("info", f"Filtering enabled: Only converting {len(filter_items)} items.")
+        except:
+            status_message("error", f"Could not load filter file: {args.filter}")
     
     # Load Mappings
     try:
@@ -1196,10 +1218,10 @@ def main():
     config = {}
     g_id = 1
     
-    old_fmt, g_id = parse_old_format(item_mappings, texture_maps)
+    old_fmt, g_id = parse_old_format(item_mappings, texture_maps, filter_items)
     config.update(old_fmt)
     
-    new_fmt, g_id = parse_new_format(g_id)
+    new_fmt, g_id = parse_new_format(g_id, filter_items)
     config.update(new_fmt)
     
     config = resolve_parental(config)
