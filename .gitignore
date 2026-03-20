@@ -1,0 +1,15 @@
+node_modules/
+pack/
+scratch_files/
+target/
+temp_*/
+*.bak
+*.log
+.DS_Store
+dist/
+build/
+rp_current_nexo/
+rp_java_nexo/
+config.json
+default_assets.zip
+__pycache__/

@@ -1,0 +1,6 @@
+python310.zip
+.
+..
+
+# Enable site packages for pip/libraries
+import site
