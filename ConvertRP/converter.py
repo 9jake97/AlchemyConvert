@@ -213,9 +213,20 @@ def parse_old_format(mappings, texture_maps, filter_items=None):
     config_entries = {}
     geyser_id_counter = 1
     
-    files = glob.glob("./pack/assets/*/models/item/*.json")
+    # Robust search for all JSON models in all namespaces
+    files = []
+    for root, dirs, fnames in os.walk("./pack/assets"):
+        for f in fnames:
+            if f.lower().endswith(".json"):
+                full_path = os.path.join(root, f)
+                # Check for standard model paths: /models/item/ or /items/
+                rel_p = full_path.replace("\\", "/").lower()
+                if "/models/item/" in rel_p or "/items/" in rel_p:
+                    files.append(full_path)
+
     for filepath in files:
-        f_parts = os.path.normpath(filepath).split(os.sep)
+        # Normalize to forward slashes for splitting
+        f_parts = filepath.replace("\\", "/").split("/")
         try:
             assets_idx = f_parts.index("assets")
             ns_item = f_parts[assets_idx + 1]
@@ -229,9 +240,15 @@ def parse_old_format(mappings, texture_maps, filter_items=None):
 
         # Filter check
         if filter_items is not None:
-            filter_lower = [f.lower() for f in filter_items]
-            if item_base.lower() not in filter_lower and item_name.lower() not in filter_lower:
+            filter_lower = [f.lower().strip() for f in filter_items]
+            match_base = item_base.lower().strip()
+            match_name = item_name.lower().strip()
+            
+            if match_base not in filter_lower and match_name not in filter_lower:
+                # status_message("debug", f"Skipping {item_name} (not in filter: {filter_lower})")
                 continue
+            else:
+                status_message("info", f"MATCHED: {item_name}")
 
 
         try:
@@ -335,12 +352,15 @@ def parse_new_format(geyser_id_counter, filter_items=None):
             ns_item = f_parts[assets_idx + 1]
         except:
             continue
-        item_base = os.path.basename(filepath).replace(".json", "")
+        item_base = os.path.basename(filepath)
+        if item_base.lower().endswith(".json"):
+            item_base = item_base[:-5]
         item_name = f"{ns_item}:{item_base}"
 
         # Filter check
         if filter_items is not None:
-            if item_base not in filter_items and item_name not in filter_items:
+            filter_lower = [f.lower() for f in filter_items]
+            if item_base.lower() not in filter_lower and item_name.lower() not in filter_lower:
                 continue
 
 
