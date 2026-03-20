@@ -6,7 +6,12 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn, exec } = require('child_process');
-const JSZip = require('jszip');
+let JSZip;
+try {
+    JSZip = require('jszip');
+} catch (e) {
+    JSZip = window.JSZip; // Fallback to CDN version from index.html
+}
 
 // UI Elements
 const batchLog = document.getElementById('batchLog');
@@ -87,6 +92,7 @@ async function indexZipFile(file) {
         });
 
         log(`Found ${allDiscoveredModels.length} candidate models.`);
+        console.log("Discovered models:", allDiscoveredModels);
         
         if (allDiscoveredModels.length > 0) {
             showItemSelection();
@@ -154,6 +160,8 @@ async function runConversion(modelsToConvert) {
     batchLog.textContent = '';
     batchStatus.textContent = '🔄 Generating Icons...';
     log(`Starting selective conversion of ${modelsToConvert.length} items.`);
+    console.log("Selective conversion started:", modelsToConvert);
+    viewer.removeAll();
 
     const total = modelsToConvert.length;
     let successCount = 0;
